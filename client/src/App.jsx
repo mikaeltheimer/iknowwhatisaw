@@ -736,34 +736,49 @@ body {
 // COMPONENTS
 // ============================================
 
+// Remplace la fonction VideoEmbed dans App.jsx par celle-ci :
+
 function VideoEmbed({ video, isActive }) {
   const [tiktokHtml, setTiktokHtml] = useState('')
+  const [tiktokError, setTiktokError] = useState(false)
+  const containerRef = useRef(null)
   
   useEffect(() => {
     if (video.platform === 'tiktok' && video.original_url) {
       const cleanUrl = video.original_url.split('?')[0]
+      
       fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`)
         .then(res => res.json())
         .then(data => {
-          if (data.html) {
+          // Vérifier que TikTok a retourné de vraies données
+          if (data.html && data.author_name && data.author_name !== '@') {
             setTiktokHtml(data.html)
+            setTiktokError(false)
+          } else {
+            // Vidéo non embeddable
+            setTiktokError(true)
           }
         })
-        .catch(() => {})
+        .catch(() => {
+          setTiktokError(true)
+        })
     }
-  }, [video])
+  }, [video.original_url, video.platform])
   
   useEffect(() => {
-    // Charge le script TikTok après insertion du HTML
     if (tiktokHtml && video.platform === 'tiktok') {
+      // Supprimer les anciens scripts et recharger
+      const oldScripts = document.querySelectorAll('script[src*="tiktok.com/embed"]')
+      oldScripts.forEach(s => s.remove())
+      
+      if (window.tiktokEmbed) {
+        delete window.tiktokEmbed
+      }
+      
       const script = document.createElement('script')
       script.src = 'https://www.tiktok.com/embed.js'
       script.async = true
       document.body.appendChild(script)
-      
-      return () => {
-        document.body.removeChild(script)
-      }
     }
   }, [tiktokHtml, video.platform])
   
@@ -779,14 +794,29 @@ function VideoEmbed({ video, isActive }) {
   }
   
   if (video.platform === 'tiktok') {
+    if (tiktokError) {
+      const cleanUrl = video.original_url.split('?')[0]
+      return (
+        <div className="platform-placeholder">
+          <div className="platform-icon">📱</div>
+          <p>This video cannot be embedded</p>
+          <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="external-link">
+            Watch on TikTok →
+          </a>
+        </div>
+      )
+    }
+    
     if (tiktokHtml) {
       return (
         <div 
+          ref={containerRef}
           className="tiktok-embed-container"
           dangerouslySetInnerHTML={{ __html: tiktokHtml }}
         />
       )
     }
+    
     return (
       <div className="platform-placeholder">
         <div className="platform-icon">📱</div>
