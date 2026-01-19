@@ -198,6 +198,19 @@ body {
   border: none;
 }
 
+.tiktok-embed-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.tiktok-embed-container iframe {
+  max-height: 100%;
+}
+
 .platform-placeholder {
   width: 100%;
   height: 100%;
@@ -706,6 +719,35 @@ body {
 // ============================================
 
 function VideoEmbed({ video, isActive }) {
+  const [tiktokHtml, setTiktokHtml] = useState('')
+  
+  useEffect(() => {
+    if (video.platform === 'tiktok' && video.original_url) {
+      fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(video.original_url)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.html) {
+            setTiktokHtml(data.html)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [video])
+  
+  useEffect(() => {
+    // Charge le script TikTok après insertion du HTML
+    if (tiktokHtml && video.platform === 'tiktok') {
+      const script = document.createElement('script')
+      script.src = 'https://www.tiktok.com/embed.js'
+      script.async = true
+      document.body.appendChild(script)
+      
+      return () => {
+        document.body.removeChild(script)
+      }
+    }
+  }, [tiktokHtml, video.platform])
+  
   if (video.platform === 'youtube') {
     return (
       <iframe
@@ -718,13 +760,18 @@ function VideoEmbed({ video, isActive }) {
   }
   
   if (video.platform === 'tiktok') {
+    if (tiktokHtml) {
+      return (
+        <div 
+          className="tiktok-embed-container"
+          dangerouslySetInnerHTML={{ __html: tiktokHtml }}
+        />
+      )
+    }
     return (
       <div className="platform-placeholder">
         <div className="platform-icon">📱</div>
-        <p>TikTok Video</p>
-        <a href={video.original_url} target="_blank" rel="noopener noreferrer" className="external-link">
-          View on TikTok →
-        </a>
+        <p>Loading TikTok...</p>
       </div>
     )
   }
