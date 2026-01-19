@@ -191,8 +191,10 @@ body {
 }
 
 .video-container[data-platform="tiktok"] {
-  aspect-ratio: 9/16;
-  max-height: 70vh;
+  aspect-ratio: unset;
+  max-width: 325px;
+  height: auto;
+  max-height: 80vh;
 }
 
 .video-container[data-platform="instagram"] {
@@ -212,24 +214,19 @@ body {
 }
 
 .tiktok-embed-container {
-  width: 100%;
-  height: 100%;
+  width: 325px;
+  min-height: 575px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  overflow: hidden;
-  background: var(--color-bg);
 }
 
-.tiktok-embed-container > blockquote {
+.tiktok-embed-container blockquote {
   margin: 0 !important;
-  max-width: 100% !important;
-  min-width: 100% !important;
 }
 
-.tiktok-embed-container iframe {
-  max-height: 100% !important;
-  max-width: 100% !important;
+.tiktok-embed-container section {
+  height: auto !important;
 }
 
 .platform-placeholder {
@@ -744,7 +741,8 @@ function VideoEmbed({ video, isActive }) {
   
   useEffect(() => {
     if (video.platform === 'tiktok' && video.original_url) {
-      fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(video.original_url)}`)
+      const cleanUrl = video.original_url.split('?')[0]
+      fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`)
         .then(res => res.json())
         .then(data => {
           if (data.html) {
@@ -914,14 +912,13 @@ useEffect(() => {
     }
     
     // TikTok
-    const ttMatch = videoUrl.match(/tiktok\.com\/@[^\/]+\/video\/(\d+)/)
-    if (ttMatch) {
+    if (videoUrl.includes('tiktok.com') && videoUrl.includes('/video/')) {
       setFetchingTitle(true)
       try {
-        const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(videoUrl)}`)
+        const cleanUrl = videoUrl.split('?')[0]
+        const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`)
         if (response.ok) {
           const data = await response.json()
-          // TikTok retourne le titre dans "title"
           if (data.title) {
             setTitle(data.title)
           }
