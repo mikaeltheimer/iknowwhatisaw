@@ -103,13 +103,19 @@ serve(async (req) => {
       );
     }
 
+    // Nettoyer l'URL (enlever les paramètres pour TikTok)
+    let cleanedUrl = url;
+    if (parsed.platform === 'tiktok') {
+      cleanedUrl = url.split('?')[0];
+    }
+
     // Insérer la vidéo
     const { data, error } = await supabase
       .from("videos")
       .insert({
         platform: parsed.platform,
         video_id: parsed.id,
-        original_url: url,
+        original_url: cleanedUrl,
         title: cleanTitle,
         submitter_fingerprint: fingerprint,
       })

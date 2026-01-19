@@ -737,6 +737,36 @@ body {
 // ============================================
 
 function VideoEmbed({ video, isActive }) {
+  const [tiktokHtml, setTiktokHtml] = useState('')
+  
+  useEffect(() => {
+    if (video.platform === 'tiktok' && video.original_url) {
+      const cleanUrl = video.original_url.split('?')[0]
+      fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.html) {
+            setTiktokHtml(data.html)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [video])
+  
+  useEffect(() => {
+    // Charge le script TikTok après insertion du HTML
+    if (tiktokHtml && video.platform === 'tiktok') {
+      const script = document.createElement('script')
+      script.src = 'https://www.tiktok.com/embed.js'
+      script.async = true
+      document.body.appendChild(script)
+      
+      return () => {
+        document.body.removeChild(script)
+      }
+    }
+  }, [tiktokHtml, video.platform])
+  
   if (video.platform === 'youtube') {
     return (
       <iframe
@@ -749,13 +779,19 @@ function VideoEmbed({ video, isActive }) {
   }
   
   if (video.platform === 'tiktok') {
+    if (tiktokHtml) {
+      return (
+        <div 
+          className="tiktok-embed-container"
+          dangerouslySetInnerHTML={{ __html: tiktokHtml }}
+        />
+      )
+    }
     return (
-      <iframe
-        src={`https://www.tiktok.com/embed/v2/${video.video_id}`}
-        className="video-iframe"
-        allowFullScreen
-        allow="encrypted-media"
-      />
+      <div className="platform-placeholder">
+        <div className="platform-icon">📱</div>
+        <p>Loading TikTok...</p>
+      </div>
     )
   }
   
@@ -857,7 +893,7 @@ function SubmitModal({ isOpen, onClose, onSubmit, isSubmitting }) {
     }
   }, [isOpen, render])
   
-// Auto-fetch video title (YouTube only)
+// Auto-fetch video title
 useEffect(() => {
   const fetchTitle = async (videoUrl) => {
     // YouTube
@@ -872,6 +908,24 @@ useEffect(() => {
         }
       } catch (e) {}
       finally { setFetchingTitle(false) }
+      return
+    }
+    
+    // TikTok
+    if (videoUrl.includes('tiktok.com') && videoUrl.includes('/video/')) {
+      setFetchingTitle(true)
+      try {
+        const cleanUrl = videoUrl.split('?')[0]
+        const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(cleanUrl)}`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.title) {
+            setTitle(data.title)
+          }
+        }
+      } catch (e) {}
+      finally { setFetchingTitle(false) }
+      return
     }
   }
   
