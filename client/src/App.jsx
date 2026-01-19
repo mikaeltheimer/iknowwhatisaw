@@ -179,12 +179,25 @@ body {
   position: relative;
   width: 100%;
   max-width: 600px;
-  aspect-ratio: 16/9;
   background: var(--color-surface);
   border-radius: 16px;
   overflow: hidden;
   border: 2px solid var(--color-surface-light);
   transition: all 0.3s;
+}
+
+.video-container[data-platform="youtube"] {
+  aspect-ratio: 16/9;
+}
+
+.video-container[data-platform="tiktok"] {
+  aspect-ratio: 9/16;
+  max-height: 70vh;
+}
+
+.video-container[data-platform="instagram"] {
+  aspect-ratio: 9/16;
+  max-height: 70vh;
 }
 
 .video-card.active .video-container {
@@ -205,10 +218,18 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  background: var(--color-bg);
+}
+
+.tiktok-embed-container > blockquote {
+  margin: 0 !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
 }
 
 .tiktok-embed-container iframe {
-  max-height: 100%;
+  max-height: 100% !important;
+  max-width: 100% !important;
 }
 
 .platform-placeholder {
@@ -805,7 +826,7 @@ function VideoCard({ video, isActive, onVote, onFlag, userVote, userFlagged, isV
 
   return (
     <div className={`video-card ${isActive ? 'active' : ''}`}>
-      <div className="video-container">
+      <div className="video-container" data-platform={video.platform}>
         <VideoEmbed video={video} isActive={isActive} />
         <div className="video-overlay">
           <div className="credibility-badge" data-level={getCredibilityClass()}>
@@ -874,12 +895,12 @@ function SubmitModal({ isOpen, onClose, onSubmit, isSubmitting }) {
     }
   }, [isOpen, render])
   
-  // Auto-fetch YouTube title
-  useEffect(() => {
-    const fetchYouTubeTitle = async (videoUrl) => {
-      const ytMatch = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-      if (!ytMatch) return
-      
+// Auto-fetch video title
+useEffect(() => {
+  const fetchTitle = async (videoUrl) => {
+    // YouTube
+    const ytMatch = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+    if (ytMatch) {
       setFetchingTitle(true)
       try {
         const response = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`)
@@ -887,17 +908,34 @@ function SubmitModal({ isOpen, onClose, onSubmit, isSubmitting }) {
           const data = await response.json()
           setTitle(data.title)
         }
-      } catch (e) {
-        // Silently fail, user can enter title manually
-      } finally {
-        setFetchingTitle(false)
-      }
+      } catch (e) {}
+      finally { setFetchingTitle(false) }
+      return
     }
     
-    if (url.includes('youtube.com') || url.includes('youtu.be')) {
-      fetchYouTubeTitle(url)
+    // TikTok
+    const ttMatch = videoUrl.match(/tiktok\.com\/@[^\/]+\/video\/(\d+)/)
+    if (ttMatch) {
+      setFetchingTitle(true)
+      try {
+        const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(videoUrl)}`)
+        if (response.ok) {
+          const data = await response.json()
+          // TikTok retourne le titre dans "title"
+          if (data.title) {
+            setTitle(data.title)
+          }
+        }
+      } catch (e) {}
+      finally { setFetchingTitle(false) }
+      return
     }
-  }, [url])
+  }
+  
+  if (url.length > 10) {
+    fetchTitle(url)
+  }
+}, [url])
   
   const handleSubmit = async (e) => {
     e.preventDefault()
