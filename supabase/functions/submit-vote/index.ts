@@ -32,26 +32,26 @@ serve(async (req) => {
       );
     }
 
-    // Vérifier Turnstile si token fourni
-    if (turnstileToken) {
-      const turnstileSecret = Deno.env.get("TURNSTILE_SECRET_KEY");
-      const formData = new FormData();
-      formData.append("secret", turnstileSecret);
-      formData.append("response", turnstileToken);
+    // // Vérifier Turnstile si token fourni
+    // if (turnstileToken) {
+    //   const turnstileSecret = Deno.env.get("TURNSTILE_SECRET_KEY");
+    //   const formData = new FormData();
+    //   formData.append("secret", turnstileSecret);
+    //   formData.append("response", turnstileToken);
 
-      const turnstileResult = await fetch(
-        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-        { method: "POST", body: formData }
-      );
-      const turnstileOutcome = await turnstileResult.json();
+    //   const turnstileResult = await fetch(
+    //     "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    //     { method: "POST", body: formData }
+    //   );
+    //   const turnstileOutcome = await turnstileResult.json();
 
-      if (!turnstileOutcome.success) {
-        return new Response(
-          JSON.stringify({ success: false, error: "Bot verification failed" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
+    //   if (!turnstileOutcome.success) {
+    //     return new Response(
+    //       JSON.stringify({ success: false, error: "Bot verification failed" }),
+    //       { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    //     );
+    //   }
+    // }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

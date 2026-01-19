@@ -817,6 +817,7 @@ function SubmitModal({ isOpen, onClose, onSubmit, isSubmitting }) {
   const [url, setUrl] = useState('')
   const [title, setTitle] = useState('')
   const [error, setError] = useState('')
+  const [fetchingTitle, setFetchingTitle] = useState(false)
   const turnstileRef = useRef(null)
   const { token, render, reset } = useTurnstile()
   
@@ -825,6 +826,31 @@ function SubmitModal({ isOpen, onClose, onSubmit, isSubmitting }) {
       render(turnstileRef.current)
     }
   }, [isOpen, render])
+  
+  // Auto-fetch YouTube title
+  useEffect(() => {
+    const fetchYouTubeTitle = async (videoUrl) => {
+      const ytMatch = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+      if (!ytMatch) return
+      
+      setFetchingTitle(true)
+      try {
+        const response = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`)
+        if (response.ok) {
+          const data = await response.json()
+          setTitle(data.title)
+        }
+      } catch (e) {
+        // Silently fail, user can enter title manually
+      } finally {
+        setFetchingTitle(false)
+      }
+    }
+    
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      fetchYouTubeTitle(url)
+    }
+  }, [url])
   
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -887,7 +913,7 @@ function SubmitModal({ isOpen, onClose, onSubmit, isSubmitting }) {
           </div>
           
           <div className="form-group">
-            <label>Title / Description</label>
+            <label>Title / Description {fetchingTitle && <span style={{color: 'var(--color-accent)'}}>(fetching...)</span>}</label>
             <input
               type="text"
               value={title}
@@ -902,7 +928,7 @@ function SubmitModal({ isOpen, onClose, onSubmit, isSubmitting }) {
           
           {error && <div className="form-error">{error}</div>}
           
-          <button type="submit" className="submit-btn" disabled={isSubmitting || !token}>
+          <button type="submit" className="submit-btn" disabled={isSubmitting || !token || fetchingTitle}>
             {isSubmitting ? 'Uploading...' : 'Upload to Archive'}
           </button>
         </form>
